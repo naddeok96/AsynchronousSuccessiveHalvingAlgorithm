@@ -25,11 +25,11 @@ if __name__ == "__main__":
         evaluate_script=str(CURRENT_DIR / "california_housing_train.py"),
         config_path=str(CURRENT_DIR / "california_housing_sweep_cfg.yaml"),
         save_path=str(CURRENT_DIR / "outputs"),
-        max_resource=100,
+        max_resource=75,
         reduction_factor=4,
-        gpu_workers=[0,2,4],
-        num_runs_per_gpu=1,
-        time_between_runs=10,
+        gpu_workers=[1,2,4,5,6,7],
+        num_runs_per_gpu=5,
+        time_between_runs=3,
     )
     hyperband.run()
 

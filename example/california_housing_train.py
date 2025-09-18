@@ -199,7 +199,7 @@ def main(run_dir, epochs, gpu_number):
         config = yaml.safe_load(file)
     
     # Set up device
-    print(f"Using GPU {gpu_number}" if "cuda" in str(device) else "Using CPU")
+    print(f"Using GPU {gpu_number}")
     device = torch.device(f"cuda:{gpu_number}" if torch.cuda.is_available() and gpu_number < torch.cuda.device_count() else "cpu")
 
     # Load data
