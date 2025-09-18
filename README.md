@@ -14,6 +14,7 @@ The `example/` directory contains a minimal end-to-end sweep that trains a small
 ### Prerequisites
 - Python 3.8+
 - PyTorch and scikit-learn
+- Virtual environment populated from `requirements.txt` (for example, `python -m venv .venv && source .venv/bin/activate && pip install -r requirements.txt`)
 - Optional for richer output: `pip install tqdm names`
 
 ### Running the sweep
@@ -22,6 +23,8 @@ cd AsynchronousSuccessiveHalvingAlgorithm
 python example/run_california_housing_sweep.py
 ```
 The script caches the dataset under `example/outputs/data/` and writes all sweep artefacts to `example/outputs/`. Re-running the command automatically overwrites the previous outputs for a clean slate.
+
+If you're launching long sweeps, start a `tmux` session (for example, `tmux new -s asha`) so the run continues even if your SSH connection drops.
 
 ## Extending Beyond The Example
 To adapt ASHA to a new project:
