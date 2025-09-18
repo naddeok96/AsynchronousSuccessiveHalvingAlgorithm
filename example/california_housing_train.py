@@ -5,6 +5,7 @@
 import argparse
 import os
 import sys
+from pathlib import Path
 
 # Third-party
 import pickle
@@ -17,8 +18,14 @@ from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
 import yaml
 
+# Ensure the ASHA implementation module is discoverable when the script is executed directly
+EXAMPLE_DIR = Path(__file__).resolve().parent
+PROJECT_ROOT = EXAMPLE_DIR.parent
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
+
 # Local
-from asha_sweep import append_fitness_score, get_fitness_scores, modify_current_runs
+from asha_sweep import append_metric_value, get_fitness_scores, modify_current_runs
 
 #---------------------------------------------------------------------------------------#
 
@@ -60,6 +67,8 @@ def load_data(config, save_path):
     val_path = os.path.join(save_path, "data", "val.pkl")
     
     if os.path.exists(train_path) and os.path.exists(val_path):
+        print("Loading preprocessed datasets from disk...")
+
         # Load existing data
         with open(train_path, "rb") as f:
             train_data = pickle.load(f)
@@ -68,6 +77,8 @@ def load_data(config, save_path):
         train_loader = DataLoader(train_data, batch_size=config["batch_size"], shuffle=True)
         val_loader = DataLoader(val_data, batch_size=config["batch_size"], shuffle=False)
     else:
+        print("Preprocessing California housing dataset and saving to disk...")
+
         # Create directories if they don't exist
         os.makedirs(os.path.dirname(train_path), exist_ok=True)
         
@@ -99,11 +110,12 @@ def load_data(config, save_path):
         
         train_loader = DataLoader(train_dataset, batch_size=config["batch_size"], shuffle=True)
         val_loader = DataLoader(val_dataset, batch_size=config["batch_size"], shuffle=False)
-    
+
     return train_loader, val_loader
 
 # Training loop
 def train_model(model, train_loader, device, config, num_epochs):
+    print(f"Starting training for {num_epochs} epochs using {config['optimizer_type']} optimizer on {device}.")
 
     model.to(device)
 
@@ -137,6 +149,8 @@ def train_model(model, train_loader, device, config, num_epochs):
             optimizer.step()
             train_loss += loss.item() * X_batch.size(0)
         
+        print(f"Epoch {epoch+1}/{num_epochs}, Training Loss: {train_loss:.4f}")
+
         train_loss /= len(train_loader.dataset)
 
 # Validation
@@ -152,14 +166,18 @@ def validate_model(model, val_loader, device):
             val_loss += loss.item() * X_batch.size(0)
     val_loss /= len(val_loader.dataset)
     
+    print(f"Validation Loss: {val_loss:.4f}")
+
     return val_loss
 
 # Save model function
 def save_model(model, path):
+    print(f"Saving model to {path}")
     torch.save(model.state_dict(), path)
 
 # Load model function
 def load_model(path, config):
+    print(f"Loading model from {path}")
     model = CaliforniaNN(config)
     model.load_state_dict(torch.load(path))
     model.eval()
@@ -176,14 +194,17 @@ def main(run_dir, epochs, gpu_number):
     current_rung = len(get_fitness_scores(sweep_path, config_name))
 
     # Load configuration
+    print("Loading configuration...")
     with open(config_path, "r") as file:
         config = yaml.safe_load(file)
     
     # Set up device
+    print(f"Using GPU {gpu_number}" if "cuda" in str(device) else "Using CPU")
     device = torch.device(f"cuda:{gpu_number}" if torch.cuda.is_available() and gpu_number < torch.cuda.device_count() else "cpu")
 
     # Load data
     train_loader, val_loader = load_data(config, sweep_path)
+    print("Training completed, evaluating on validation set...")
     
     # Initialize model
     model = CaliforniaNN(config)
@@ -213,6 +234,9 @@ def main(run_dir, epochs, gpu_number):
 
     # Calculate fitness score and return
     fitness_score = -val_loss
+
+    print(f"Final fitness score: {fitness_score:.4f}")
+
     return fitness_score
 
 #---------------------------------------------------------------------------------------#
@@ -245,10 +269,10 @@ if __name__ == "__main__":
     )
 
     # Log rungs fitness score in ledger
-    append_fitness_score(
-        save_path=sweep_path, 
-        config_name=config_name, 
-        fitness_score = fitness_score
+    append_metric_value(
+        sweep_path, 
+        config_name, 
+        "fitness_scores", fitness_score
     )
 
     # Indicate run on gpu is over in ledger

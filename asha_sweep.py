@@ -3,6 +3,7 @@
 
 # Standard Library Imports
 import os
+import sys
 import csv
 import math
 import time
@@ -203,17 +204,17 @@ def modify_current_runs(save_path, config_name, gpu_number=None, add=True):
 class HyperbandASHA(ABC):
 
     def __init__(
-            self, 
-            venv_path,
-            evaluate_script,
-            config_path, 
-            save_path,
-            max_resource=81, 
-            reduction_factor=4, 
-            gpu_workers=[0,1,2,3,4,5],
-            num_runs_per_gpu = 1,
+            self,
+            venv_path=None,
+            evaluate_script=None,
+            config_path=None,
+            save_path=None,
+            max_resource=81,
+            reduction_factor=4,
+            gpu_workers=None,
+            num_runs_per_gpu=1,
             time_between_runs=10,
-            additional_metrics_to_track=[]
+            additional_metrics_to_track=[],
         ):
         """
         Initialize the Hyperband-ASHA scheduler.
@@ -230,14 +231,31 @@ class HyperbandASHA(ABC):
             time_between_runs (int): Time to wait before starting another run, in seconds (default: 10).
             additional_metrics_to_track (list, optional): list of additional metrics to track during evaluation besides fitness_scores.
         """
-        self.venv_path = venv_path  # Path to the virtual environment
-        self.evaluate_script = evaluate_script  # Path to the evaluation script
-        self.config_path = config_path  # Path to the hyperparameter search space YAML file
-        self.save_path = save_path  # Directory for saving results
+
+        if venv_path is None:
+            raise ValueError("A venv path must be provided.")
+        else:
+            self.venv_path = venv_path
+
+        if evaluate_script is None:
+            raise ValueError("An evaluation script path must be provided.")
+        else:
+            self.evaluate_script = evaluate_script
+
+        if config_path is None:
+            raise ValueError("A search-space configuration path must be provided.")
+        else:
+            self.config_path = config_path
+            
+        if save_path is None:
+            raise ValueError("A save path must be provided.")
+        else:
+            self.save_path = save_path
+            
         self.time_between_runs = time_between_runs  # Delay between starting new runs
         self.max_resource = max_resource  # Maximum resources per configuration
         self.reduction_factor = reduction_factor  # Reduction factor for Hyperband-ASHA
-        self.gpu_workers = gpu_workers  # List of GPU indices for parallel runs
+        self.gpu_workers = gpu_workers # Worker identifiers
         self.num_runs_per_gpu = num_runs_per_gpu # Number of runs allowed on a gpu
         self.config_names = set()  # Set of unique configuration names
         self.config_tuples = set()  # Set of unique configuration tuples
@@ -257,7 +275,7 @@ class HyperbandASHA(ABC):
 
         # Initialize GPUs, search space, and directories
         self.reserve_gpus()
-        self.search_space = self.load_search_space(config_path)
+        self.search_space = self.load_search_space()
         self.initialize_brackets()
         self.create_save_path()
 
@@ -278,6 +296,7 @@ class HyperbandASHA(ABC):
                             placeholder tensors.
         """
         self.holders = {}
+
         for gpu in self.gpu_workers:
             self.holders[gpu] = torch.tensor(42).to(f"cuda:{gpu}")
 
@@ -313,7 +332,7 @@ class HyperbandASHA(ABC):
         with open(current_runs_path, 'w') as f:
             pass  # Create an empty file
 
-    def load_search_space(self, config_path):
+    def load_search_space(self):
         """
         Load the search space from a YAML configuration file.
 
@@ -323,7 +342,7 @@ class HyperbandASHA(ABC):
         Returns:
             dict: Parsed search space.
         """
-        with open(config_path, 'r') as file:
+        with open(self.config_path, 'r') as file:
             return yaml.safe_load(file)
 
     def sample_configuration(self):
@@ -378,6 +397,7 @@ class HyperbandASHA(ABC):
                         if name not in self.config_names:
                             self.config_names.add(name)
                             break
+
                     configurations[name] = {"params": config}
                     pbar.update(1)  # Update the progress bar
                 attempts += 1
@@ -697,7 +717,7 @@ class HyperbandASHA(ABC):
         # Define the Python executable from the virtual environment
         python_executable = f"{self.venv_path}/bin/python3"
 
-        # Construct the command to call the script
+        # Construct the command to call the evaluator
         command = [
             python_executable,
             self.evaluate_script,
@@ -878,4 +898,3 @@ class HyperbandASHA(ABC):
         return best_config_name, best_config, best_fitness_score, best_config_bracket
 
 #---------------------------------------------------------------------------------------#
-
