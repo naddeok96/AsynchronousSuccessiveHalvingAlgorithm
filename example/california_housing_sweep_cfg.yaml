@@ -1,0 +1,33 @@
+layer1_size:
+  type: categorical
+  values: [32, 64, 128, 256]
+layer2_size:
+  type: categorical
+  values: [32, 64, 128, 256]
+layer3_size:
+  type: categorical
+  values: [32, 64, 128, 256]
+layer4_size:
+  type: categorical
+  values: [32, 64, 128, 256]
+batch_norm:
+  type: categorical
+  values: [true, false]
+dropout_rate:
+  type: categorical
+  values: [0.1, 0.2, 0.3, 0.5]
+batch_size:
+  type: categorical
+  values: [32, 64, 128, 256]
+optimizer_type:
+  type: categorical
+  values: ['adam', 'sgd', 'rmsprop', 'adagrad']
+lr:
+  type: categorical
+  values: [0.0001, 0.001, 0.01, 0.1]
+weight_decay:
+  type: categorical
+  values: [0.0, 0.0001, 0.001, 0.01]
+momentum:
+  type: categorical
+  values: [0.5, 0.7, 0.9, 0.99]
